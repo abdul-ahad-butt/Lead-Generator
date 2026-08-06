@@ -80,7 +80,7 @@ function isValidUsNumber(phoneStr: string): boolean {
 }
 
 function formatPhone(digits: string): string {
-  return \`(\${digits.substring(0, 3)}) \${digits.substring(3, 6)}-\${digits.substring(6)}\`
+  return `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}`
 }
 
 app.post('/api/validate', async (c) => {
@@ -91,7 +91,7 @@ app.post('/api/validate', async (c) => {
     return c.json({ valid: false, error: "Must contain exactly 10 digits." }, 400)
   }
 
-  const isValid = isValidUsNumber(\`+1\${parsedPhone}\`)
+  const isValid = isValidUsNumber(`+1${parsedPhone}`)
   const areaCode = parsedPhone.substring(0, 3)
   const stateAbbr = REVERSE_AREA_CODES[areaCode]
   const stateName = stateAbbr ? US_STATES[stateAbbr] : null
@@ -122,7 +122,7 @@ app.post('/api/generate', async (c) => {
     const currentPhoneInt = baseInt + BigInt(i)
     const rawPhone = currentPhoneInt.toString().padStart(10, '0')
     const formattedPhone = formatPhone(rawPhone)
-    const isValid = isValidUsNumber(\`+1\${rawPhone}\`)
+    const isValid = isValidUsNumber(`+1${rawPhone}`)
     
     let stateAbbr = faker.location.state({ abbreviated: true })
     if (stateFilter && stateFilter.toUpperCase() !== "ALL") {
