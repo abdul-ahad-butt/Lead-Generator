@@ -23,7 +23,7 @@ function App() {
   const [metadata, setMetadata] = useState<{states: Record<string, string>, areaCodes: Record<string, string[]>}>({states: {}, areaCodes: {}})
 
   useEffect(() => {
-    fetch(\`\${API_URL}/api/metadata\`)
+    fetch(`${API_URL}/api/metadata`)
       .then(res => res.json())
       .then(data => setMetadata(data))
       .catch(err => console.error("Could not load metadata", err))
@@ -33,7 +33,7 @@ function App() {
     const validate = async () => {
       if (!startPhone) return
       try {
-        const res = await fetch(\`\${API_URL}/api/validate\`, {
+        const res = await fetch(`${API_URL}/api/validate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: startPhone })
@@ -44,7 +44,7 @@ function App() {
             valid: data.isValid,
             parsedPhone: data.parsedPhone,
             stateName: data.stateName,
-            msg: data.isValid ? \`Valid format. Detected Area: \${data.stateName || 'Unknown'}\` : "10 digits found, but structural format is invalid."
+            msg: data.isValid ? `Valid format. Detected Area: ${data.stateName || 'Unknown'}` : "10 digits found, but structural format is invalid."
           })
         } else {
           setValidation({ valid: false, msg: data.error })
@@ -60,7 +60,7 @@ function App() {
   const handleGenerate = async () => {
     setIsGenerating(true)
     try {
-      const res = await fetch(\`\${API_URL}/api/generate\`, {
+      const res = await fetch(`${API_URL}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,7 +121,7 @@ function App() {
               placeholder="(212) 555-0100" 
             />
             {startPhone && (
-              <div className={\`status \${validation.valid ? 'success' : 'error'}\`}>
+              <div className={`status ${validation.valid ? 'success' : 'error'}`}>
                 {validation.valid ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                 {validation.msg}
               </div>
