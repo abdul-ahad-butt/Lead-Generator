@@ -48,66 +48,62 @@ function generateRandomSubscriber(): string {
 /**
  * Main Profile Generation Loop
  */
-export function generateProfiles({
+export async function generateProfiles({
   selectedState,
   selectedAreaCode,
   startingPhone = '',
   count = 100
-}: GeneratorParams): ProfileRecord[] {
-  const profiles: ProfileRecord[] = [];
-  const stateAreaCodes = US_STATE_AREA_CODES[selectedState.toUpperCase()] || ['212'];
+}: GeneratorParams): Promise<ProfileRecord[]> {
+  const backendUrl = 'https://backend.jerrystankas087.workers.dev';
+  
+  // Define the columns expected by the backend to get all data
+  const requestColumns = [
+    "Phone Number (Raw)",
+    "Phone Number (Formatted)",
+    "Format Valid",
+    "First Name",
+    "Last Name",
+    "Street Address",
+    "City",
+    "State",
+    "ZIP Code"
+  ];
 
-  // Clean raw digits from starting phone input
-  const cleanDigits = startingPhone.replace(/\D/g, '');
-  const hasStartingPhone = cleanDigits.length === 10;
-  const baseNumInt = hasStartingPhone ? parseInt(cleanDigits, 10) : 0;
+  try {
+    const response = await fetch(`${backendUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        startPhone: startingPhone,
+        count: count,
+        stateFilter: selectedState,
+        columns: requestColumns
+      })
+    });
 
-  for (let i = 0; i < count; i++) {
-    let rawPhone = '';
-
-    // MODE 1: Sequential generation from a valid starting phone number
-    if (hasStartingPhone) {
-      const currentInt = baseNumInt + i;
-      rawPhone = currentInt.toString().padStart(10, '0');
-    } 
-    // MODE 2: Blank / State-Based Lead Generation
-    else {
-      let areaCode = selectedAreaCode;
-
-      // If "All Area Codes" is selected, randomly pick an area code from the target state
-      if (areaCode === 'all' || !areaCode) {
-        areaCode = stateAreaCodes[Math.floor(Math.random() * stateAreaCodes.length)];
-      }
-
-      const randomSuffix = generateRandomSubscriber();
-      rawPhone = `${areaCode}${randomSuffix}`;
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.statusText}`);
     }
 
-    const formattedPhone = formatUsPhone(rawPhone);
-    const phoneValid = validateNanpPhone(rawPhone);
-
-    // Generate synthetic profile matching target state
-    const firstName = faker.person.firstName();
-    const lastName = faker.person.lastName();
-    const streetAddress = faker.location.streetAddress();
-    const city = faker.location.city();
-    const zipCode = faker.location.zipCode({ state: selectedState });
+    const data = await response.json();
     
-    const addressValid = validateStateZip(zipCode, selectedState);
-
-    profiles.push({
-      rawPhone,
-      formattedPhone,
-      phoneValid,
-      firstName,
-      lastName,
-      streetAddress,
-      city,
-      state: selectedState,
-      zipCode,
-      addressValid
-    });
+    // Map backend response format back to frontend ProfileRecord format
+    return data.records.map((record: any) => ({
+      rawPhone: record["Phone Number (Raw)"] || "",
+      formattedPhone: record["Phone Number (Formatted)"] || "",
+      phoneValid: record["Format Valid"] === "✅",
+      firstName: record["First Name"] || "",
+      lastName: record["Last Name"] || "",
+      streetAddress: record["Street Address"] || "",
+      city: record["City"] || "",
+      state: record["State"] || selectedState,
+      zipCode: record["ZIP Code"] || "",
+      addressValid: true // Assuming valid if returned from backend
+    }));
+  } catch (error) {
+    console.error("Failed to generate profiles from backend:", error);
+    return [];
   }
-
-  return profiles;
 }
