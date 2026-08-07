@@ -1,7 +1,3 @@
-import { fakerEN_US as faker } from '@faker-js/faker';
-import { US_STATE_AREA_CODES } from './usStateAreaCodes';
-import { validateNanpPhone, validateStateZip } from './usValidator';
-
 export interface ProfileRecord {
   rawPhone: string;
   formattedPhone: string;
@@ -23,34 +19,10 @@ export interface GeneratorParams {
 }
 
 /**
- * Formats a raw 10-digit phone string into standard US format: (XXX) XXX-XXXX
- */
-function formatUsPhone(rawDigits: string): string {
-  const clean = rawDigits.padEnd(10, '0').slice(0, 10);
-  return `(${clean.slice(0, 3)}) ${clean.slice(3, 6)}-${clean.slice(6)}`;
-}
-
-/**
- * Generates a valid random 7-digit subscriber number (NXX-XXXX)
- * where the NXX exchange code starts with digits 2-9 per NANP rules.
- */
-function generateRandomSubscriber(): string {
-  // Exchange code (NXX): first digit must be 2-9
-  const nxxFirst = Math.floor(Math.random() * 8) + 2;
-  const nxxRest = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-  
-  // Subscriber digits (XXXX)
-  const subscriber = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  
-  return `${nxxFirst}${nxxRest}${subscriber}`;
-}
-
-/**
  * Main Profile Generation Loop
  */
 export async function generateProfiles({
   selectedState,
-  selectedAreaCode,
   startingPhone = '',
   count = 100
 }: GeneratorParams): Promise<ProfileRecord[]> {
