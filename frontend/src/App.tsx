@@ -1,240 +1,349 @@
-import { useState, useEffect } from 'react'
-import * as XLSX from 'xlsx'
-import { Rocket, Download, CheckCircle, AlertCircle } from 'lucide-react'
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { usePhoneStateSync } from './usePhoneStateSync';
+import { generateProfiles, type ProfileRecord } from './profileGenerator';
+import { ResultsSection, type ColumnVisibility } from './ResultsSection';
+import { MapPin, Phone, Settings2, CheckCircle2, Zap, LayoutList, RefreshCcw } from 'lucide-react';
 
-const ALL_COLS = [
-  "Phone Number (Raw)", "Phone Number (Formatted)", "Format Valid", 
-  "First Name", "Last Name", "Street Address", "City", "State", "ZIP Code"
-]
+const ALL_COLUMNS: (keyof ColumnVisibility)[] = [
+  'rawPhone',
+  'formattedPhone',
+  'phoneValid',
+  'firstName',
+  'lastName',
+  'streetAddress',
+  'city',
+  'state',
+  'zipCode',
+  'addressValid'
+];
 
-// Assuming local dev worker runs on port 8787
-const API_URL = 'http://localhost:8787'
+export default function App() {
+  const {
+    selectedState,
+    selectedAreaCode,
+    startingPhone,
+    availableAreaCodes,
+    detectedAreaState,
+    isValidFormat,
+    handleStateChange,
+    handleAreaCodeChange,
+    handlePhoneInputChange,
+  } = usePhoneStateSync('CO');
 
-function App() {
-  const [startPhone, setStartPhone] = useState('(212) 555-0100')
-  const [count, setCount] = useState<number>(100)
-  const [filename, setFilename] = useState('generated_profiles.xlsx')
-  const [stateFilter, setStateFilter] = useState('Auto-Detect from Phone')
-  const [selectedCols, setSelectedCols] = useState<string[]>(ALL_COLS)
-  
-  const [validation, setValidation] = useState<{valid: boolean, parsedPhone?: string, stateName?: string, msg?: string}>({ valid: true })
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [records, setRecords] = useState<any[]>([])
-  const [metadata, setMetadata] = useState<{states: Record<string, string>, areaCodes: Record<string, string[]>}>({states: {}, areaCodes: {}})
+  const [generationCount, setGenerationCount] = useState<number>(100);
+  const [outputFileName, setOutputFileName] = useState<string>('usa_profiles.xlsx');
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [records, setRecords] = useState<ProfileRecord[]>([]);
 
-  useEffect(() => {
-    fetch(`${API_URL}/api/metadata`)
-      .then(res => res.json())
-      .then(data => setMetadata(data))
-      .catch(err => console.error("Could not load metadata", err))
-  }, [])
+  const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>({
+    rawPhone: true,
+    formattedPhone: true,
+    phoneValid: true,
+    firstName: true,
+    lastName: true,
+    streetAddress: true,
+    city: true,
+    state: true,
+    zipCode: true,
+    addressValid: true,
+  });
 
-  useEffect(() => {
-    const validate = async () => {
-      if (!startPhone) return
-      try {
-        const res = await fetch(`${API_URL}/api/validate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: startPhone })
-        })
-        const data = await res.json()
-        if (res.ok) {
-          setValidation({
-            valid: data.isValid,
-            parsedPhone: data.parsedPhone,
-            stateName: data.stateName,
-            msg: data.isValid ? `Valid format. Detected Area: ${data.stateName || 'Unknown'}` : "10 digits found, but structural format is invalid."
-          })
-        } else {
-          setValidation({ valid: false, msg: data.error })
-        }
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    const timeout = setTimeout(validate, 500)
-    return () => clearTimeout(timeout)
-  }, [startPhone])
+  const toggleColumn = (key: keyof ColumnVisibility) => {
+    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
-  const handleGenerate = async () => {
-    setIsGenerating(true)
-    try {
-      const res = await fetch(`${API_URL}/api/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startPhone,
-          count,
-          stateFilter: stateFilter === 'Auto-Detect from Phone' ? 'ALL' : stateFilter.split(' ')[0],
-          columns: selectedCols
-        })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setRecords(data.records)
-      } else {
-        alert("Generation failed: " + data.error)
-      }
-    } catch (e) {
-      console.error(e)
-      alert("Failed to connect to backend.")
-    } finally {
-      setIsGenerating(false)
-    }
-  }
+  const handleSelectAll = () => {
+    setVisibleColumns(
+      ALL_COLUMNS.reduce((acc, col) => ({ ...acc, [col]: true }), {} as ColumnVisibility)
+    );
+  };
 
-  const exportExcel = () => {
-    if (records.length === 0) return
-    const ws = XLSX.utils.json_to_sheet(records)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Profiles")
-    
-    // Style the header slightly via cols width
-    ws['!cols'] = Object.keys(records[0]).map(() => ({ wch: 20 }))
-    
-    let outname = filename
-    if (!outname.endsWith('.xlsx')) outname += '.xlsx'
-    XLSX.writeFile(wb, outname)
-  }
+  const handleReset = () => {
+    setVisibleColumns(
+      ALL_COLUMNS.reduce((acc, col) => ({ ...acc, [col]: true }), {} as ColumnVisibility)
+    );
+  };
 
-  const toggleCol = (col: string) => {
-    setSelectedCols(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])
-  }
+  const handleGenerate = () => {
+    if (!isValidFormat) return;
+    setIsGenerating(true);
+
+    setTimeout(() => {
+      const generated = generateProfiles({
+        selectedState,
+        selectedAreaCode,
+        startingPhone,
+        count: generationCount,
+      });
+
+      setRecords(generated);
+      setIsGenerating(false);
+    }, 400); // slight delay to show loading state
+  };
 
   return (
-    <>
-      <div className="premium-header">
-        <h1>🇺🇸 USA Profile Generator</h1>
-        <p>Generate synthetic contact datasets with structural validation.</p>
-      </div>
-
-      <div className="card">
-        <h2>Data Configuration</h2>
-        <div className="grid" style={{ marginTop: '1.5rem' }}>
-          <div className="input-group">
-            <label>Starting Phone Number</label>
-            <input 
-              type="text" 
-              value={startPhone} 
-              onChange={e => setStartPhone(e.target.value)} 
-              placeholder="(212) 555-0100" 
-            />
-            {startPhone && (
-              <div className={`status ${validation.valid ? 'success' : 'error'}`}>
-                {validation.valid ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-                {validation.msg}
-              </div>
-            )}
-          </div>
-          
-          <div className="input-group">
-            <label>Target Generation State</label>
-            <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}>
-              <option>Auto-Detect from Phone</option>
-              <option>ALL (Random States)</option>
-              {Object.entries(metadata.states).map(([abbr, name]) => (
-                <option key={abbr} value={abbr}>{abbr} — {name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Number of Profiles</label>
-            <input 
-              type="number" 
-              min={1} max={10000} 
-              value={count} 
-              onChange={e => setCount(Number(e.target.value))} 
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Output File Name</label>
-            <input 
-              type="text" 
-              value={filename} 
-              onChange={e => setFilename(e.target.value)} 
-            />
-          </div>
-        </div>
-
-        <div style={{ marginTop: '2rem' }}>
-          <label style={{ marginBottom: '1rem', display: 'block' }}>Columns to Generate</label>
-          <div className="checkbox-group">
-            {ALL_COLS.map(col => (
-              <label key={col} className="checkbox-item">
-                <input 
-                  type="checkbox" 
-                  checked={selectedCols.includes(col)} 
-                  onChange={() => toggleCol(col)}
-                />
-                {col}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-          <button 
-            className="btn btn-primary" 
-            onClick={handleGenerate} 
-            disabled={!validation.valid || isGenerating || selectedCols.length === 0}
-            style={{ flex: 1 }}
-          >
-            <Rocket size={20} />
-            {isGenerating ? 'Generating...' : 'Generate Profiles'}
-          </button>
-        </div>
-      </div>
-
-      {records.length > 0 && (
-        <div className="card">
-          <h2>Results</h2>
-          
-          <div className="metrics-grid" style={{ marginTop: '1.5rem' }}>
-            <div className="metric-card">
-              <h4>Total Records</h4>
-              <div className="value">{records.length.toLocaleString()}</div>
-            </div>
-            <div className="metric-card">
-              <h4>Valid Numbers</h4>
-              <div className="value">{records.filter(r => r["Format Valid"] === "✅").length.toLocaleString()}</div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <button className="btn btn-primary" onClick={exportExcel}>
-              <Download size={20} />
-              Download Excel
-            </button>
-          </div>
-
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  {Object.keys(records[0]).map(k => <th key={k}>{k}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {records.slice(0, 50).map((r, i) => (
-                  <tr key={i}>
-                    {Object.values(r).map((v: any, j) => <td key={j}>{v}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {records.length > 50 && (
-            <p style={{ marginTop: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              Showing first 50 records. Download Excel to see all {records.length}.
+    <div className="min-h-screen bg-[#0B0F14] text-slate-100 font-sans p-4 md:p-8 selection:bg-[#00ff9d]/30">
+      <div className="max-w-6xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2A3138] pb-6"
+        >
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
+              <span className="p-2.5 bg-[#00ff9d]/10 text-[#00ff9d] border border-[#00ff9d]/20 rounded-xl shadow-[0_0_15px_rgba(0,255,157,0.15)]">
+                <Zap size={24} className="fill-[#00ff9d]" />
+              </span>
+              USA Contact Profile Generator
+            </h1>
+            <p className="text-sm md:text-base text-slate-400 mt-2 font-medium">
+              Generate state-aligned phone leads, addresses, and export clean Excel reports.
             </p>
-          )}
-        </div>
-      )}
-    </>
-  )
-}
+          </div>
+        </motion.header>
 
-export default App
+        {/* Top Panel: Data Configuration */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="bg-[#141A21] border border-[#2A3138] rounded-2xl p-6 md:p-8 space-y-8 shadow-2xl relative overflow-hidden"
+        >
+          {/* Subtle background glow */}
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-[#00ff9d]/5 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex items-center gap-2 border-b border-[#2A3138] pb-4">
+            <Settings2 className="text-[#00ff9d]" size={20} />
+            <h2 className="text-xl font-bold text-white tracking-wide">
+              Configuration Panel
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* Target State */}
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                Target State
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <MapPin size={16} className="text-slate-500" />
+                </div>
+                <select
+                  value={selectedState}
+                  onChange={(e) => handleStateChange(e.target.value)}
+                  className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl pl-10 pr-10 py-3 text-sm text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all appearance-none shadow-inner"
+                >
+                  <option value="CO">CO — Colorado</option>
+                  <option value="NY">NY — New York</option>
+                  <option value="CA">CA — California</option>
+                  <option value="TX">TX — Texas</option>
+                  <option value="FL">FL — Florida</option>
+                  <option value="IL">IL — Illinois</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Target Area Code */}
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                Target Area Code
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedAreaCode}
+                  onChange={(e) => handleAreaCodeChange(e.target.value)}
+                  className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all appearance-none shadow-inner"
+                >
+                  <option value="all">All Area Codes (Random)</option>
+                  {availableAreaCodes.map((code) => (
+                    <option key={code} value={code}>
+                      {code} ({selectedState})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Generation Count */}
+            <div className="space-y-2 relative">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                Records Count
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={5000}
+                value={generationCount}
+                onChange={(e) => setGenerationCount(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all shadow-inner"
+              />
+            </div>
+
+            {/* Starting Phone Number */}
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                Starting Phone Number <span className="text-slate-500 font-normal normal-case">(Optional)</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Phone size={16} className={isValidFormat ? "text-slate-500" : "text-rose-500"} />
+                </div>
+                <input
+                  type="text"
+                  value={startingPhone}
+                  onChange={(e) => handlePhoneInputChange(e.target.value)}
+                  placeholder="e.g. (303) 555-0100"
+                  className={`w-full bg-[#0B0F14] border rounded-xl pl-10 pr-4 py-3 text-sm text-white font-mono focus:outline-none transition-all shadow-inner ${
+                    isValidFormat ? 'border-[#2A3138] focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d]' : 'border-rose-500 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
+                  }`}
+                />
+              </div>
+              <AnimatePresence>
+                {!isValidFormat && (
+                  <motion.p 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="text-xs text-rose-400 mt-1.5 font-medium"
+                  >
+                    Invalid phone format. Please enter a 10-digit US phone number.
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Output File Name */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                Excel File Name
+              </label>
+              <input
+                type="text"
+                value={outputFileName}
+                onChange={(e) => setOutputFileName(e.target.value)}
+                placeholder="usa_profiles.xlsx"
+                className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all shadow-inner"
+              />
+            </div>
+          </div>
+
+          {/* Column Toggle Checklist */}
+          <div className="pt-6 border-t border-[#2A3138] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                  <LayoutList size={16} className="text-slate-400" />
+                  Display Columns
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Choose which fields appear in the table and export.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleSelectAll}
+                  className="text-xs font-semibold text-[#00ff9d] hover:text-[#00e68e] transition-colors flex items-center gap-1"
+                >
+                  <CheckCircle2 size={14} /> Select All
+                </button>
+                <button 
+                  onClick={handleReset}
+                  className="text-xs font-semibold text-slate-400 hover:text-slate-300 transition-colors flex items-center gap-1"
+                >
+                  <RefreshCcw size={14} /> Reset
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2.5">
+              {ALL_COLUMNS.map((colKey, index) => {
+                const isActive = visibleColumns[colKey];
+                return (
+                  <motion.button
+                    key={colKey}
+                    type="button"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.03, duration: 0.2 }}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => toggleColumn(colKey)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
+                      isActive
+                        ? 'bg-[#00ff9d] border-[#00ff9d] text-[#0B0F14] shadow-[0_0_10px_rgba(0,255,157,0.3)]'
+                        : 'bg-transparent border-[#2A3138] text-slate-400 hover:border-slate-600 hover:text-slate-300'
+                    }`}
+                  >
+                    {colKey}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-[#2A3138] mt-6">
+            <div className="flex items-center gap-2 bg-[#0B0F14] px-4 py-2 rounded-lg border border-[#2A3138]">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff9d] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#00ff9d]"></span>
+              </span>
+              <span className="text-xs font-semibold text-slate-400">
+                Active State: <strong className="text-white ml-1">{detectedAreaState || selectedState}</strong>
+              </span>
+            </div>
+
+            <motion.button
+              whileHover={isValidFormat && !isGenerating ? { scale: 1.02 } : {}}
+              whileTap={isValidFormat && !isGenerating ? { scale: 0.98 } : {}}
+              onClick={handleGenerate}
+              disabled={isGenerating || !isValidFormat}
+              className="bg-[#00ff9d] hover:bg-[#00e68e] disabled:opacity-50 disabled:cursor-not-allowed text-[#0B0F14] font-extrabold px-8 py-3.5 rounded-xl transition-colors shadow-[0_0_20px_rgba(0,255,157,0.2)] hover:shadow-[0_0_25px_rgba(0,255,157,0.3)] flex items-center justify-center gap-2 w-full sm:w-auto"
+            >
+              {isGenerating ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-[#0B0F14]" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap fill="currentColor" size={18} />
+                  Generate Profiles ({generationCount})
+                </>
+              )}
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Results Section */}
+        <AnimatePresence>
+          {records.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+            >
+              <ResultsSection
+                records={records}
+                outputFileName={outputFileName}
+                visibleColumns={visibleColumns}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

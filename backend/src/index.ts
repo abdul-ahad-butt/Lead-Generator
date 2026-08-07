@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { faker } from '@faker-js/faker'
+import { fakerEN_US as faker } from '@faker-js/faker'
 import { PhoneNumberUtil } from 'google-libphonenumber'
+import { getRandomAreaCode, US_STATE_AREA_CODES } from './usStateAreaCodes'
+import { validateNanpPhone, validateStateZip, STATE_ZIP_RANGES } from './usValidator'
 
 const app = new Hono()
 
@@ -107,35 +109,75 @@ app.post('/api/validate', async (c) => {
 app.post('/api/generate', async (c) => {
   const { startPhone, count, stateFilter, columns } = await c.req.json()
   
-  const parsedPhone = parsePhoneNumber(startPhone)
-  if (!parsedPhone) {
-    return c.json({ error: "Invalid start phone" }, 400)
+  let baseInt: bigint | null = null
+  const isMode1 = !!startPhone
+  
+  if (isMode1) {
+    const parsedPhone = parsePhoneNumber(startPhone)
+    if (!parsedPhone) {
+      return c.json({ error: "Invalid start phone" }, 400)
+    }
+    baseInt = BigInt(parsedPhone)
+  } else {
+    // Mode 2: Blank start phone requires a specific state
+    if (!stateFilter || stateFilter === 'Auto-Detect from Phone' || stateFilter === 'ALL' || stateFilter === 'ALL (Random States)') {
+      return c.json({ error: "A specific target state must be selected when starting phone is blank." }, 400)
+    }
   }
 
-  const baseInt = BigInt(parsedPhone)
   const records = []
+  const stats = {
+    totalRecords: count,
+    validNumbers: 0,
+    validAddresses: 0
+  }
   
   // Set faker seed for consistent randomness if needed, or leave unseeded
   faker.seed() 
   
   for (let i = 0; i < count; i++) {
-    const currentPhoneInt = baseInt + BigInt(i)
-    const rawPhone = currentPhoneInt.toString().padStart(10, '0')
-    const formattedPhone = formatPhone(rawPhone)
-    const isValid = isValidUsNumber(`+1${rawPhone}`)
-    
-    let stateAbbr = faker.location.state({ abbreviated: true })
-    if (stateFilter && stateFilter.toUpperCase() !== "ALL") {
+    let rawPhone = ""
+    let stateAbbr = ""
+
+    if (isMode1 && baseInt !== null) {
+      const currentPhoneInt = baseInt + BigInt(i)
+      rawPhone = currentPhoneInt.toString().padStart(10, '0')
+      stateAbbr = faker.location.state({ abbreviated: true })
+      if (stateFilter && stateFilter.toUpperCase() !== "ALL" && stateFilter !== 'ALL (Random States)') {
+        stateAbbr = stateFilter.toUpperCase()
+      }
+    } else {
+      // Mode 2 logic
       stateAbbr = stateFilter.toUpperCase()
+      const areaCode = getRandomAreaCode(stateAbbr) || "212"
+      const nxx = Math.floor(Math.random() * 800) + 200 // 200-999
+      const xxxx = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+      rawPhone = `${areaCode}${nxx}${xxxx}`
     }
+
+    const formattedPhone = formatPhone(rawPhone)
+    const phoneValid = validateNanpPhone(rawPhone)
     
     // Ensure zip is tied to the state
-    const zipCode = faker.location.zipCode({ state: stateAbbr })
+    let zipCode = faker.location.zipCode({ state: stateAbbr })
+    const ranges = STATE_ZIP_RANGES[stateAbbr]
+    if (ranges && ranges.length > 0) {
+      // Pick a random range for the state and generate a random prefix
+      const range = ranges[Math.floor(Math.random() * ranges.length)]
+      const prefix = Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0]
+      const suffix = Math.floor(Math.random() * 100).toString().padStart(2, '0')
+      zipCode = `${prefix}${suffix}`
+    }
+    
+    const addressValid = validateStateZip(zipCode, stateAbbr)
+
+    if (phoneValid) stats.validNumbers++
+    if (addressValid) stats.validAddresses++
     
     const record: any = {
       "Phone Number (Raw)": rawPhone,
       "Phone Number (Formatted)": formattedPhone,
-      "Format Valid": isValid ? "✅" : "❌",
+      "Format Valid": phoneValid ? "✅" : "❌",
       "First Name": faker.person.firstName(),
       "Last Name": faker.person.lastName(),
       "Street Address": faker.location.streetAddress(),
@@ -154,7 +196,7 @@ app.post('/api/generate', async (c) => {
     records.push(filteredRecord)
   }
   
-  return c.json({ records })
+  return c.json({ records, stats })
 })
 
 app.get('/api/metadata', (c) => {
