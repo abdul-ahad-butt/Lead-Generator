@@ -157,20 +157,23 @@ export const ResultsSection = ({
       </div>
 
       {/* Results Table */}
-      <div className="overflow-x-auto rounded-xl border border-[#2A3138] bg-[#0B0F14] shadow-inner">
+      <div 
+        className="overflow-x-auto rounded-xl border border-[#2A3138] bg-[#0B0F14] shadow-inner"
+        style={{ WebkitOverflowScrolling: 'touch', willChange: 'transform' }}
+      >
         <table className="w-full text-left text-sm border-collapse whitespace-nowrap">
           <thead>
             <tr className="bg-[#141A21] border-b border-[#2A3138] text-slate-400 font-semibold text-xs uppercase tracking-wider">
-              {visibleColumns.rawPhone && <th className="py-4 px-5">Phone (Raw)</th>}
-              {visibleColumns.formattedPhone && <th className="py-4 px-5">Phone (Formatted)</th>}
-              {visibleColumns.phoneValid && <th className="py-4 px-5 text-center">Format Valid</th>}
-              {visibleColumns.firstName && <th className="py-4 px-5">First Name</th>}
-              {visibleColumns.lastName && <th className="py-4 px-5">Last Name</th>}
-              {visibleColumns.streetAddress && <th className="py-4 px-5">Street Address</th>}
-              {visibleColumns.city && <th className="py-4 px-5">City</th>}
-              {visibleColumns.state && <th className="py-4 px-5">State</th>}
-              {visibleColumns.zipCode && <th className="py-4 px-5">ZIP Code</th>}
-              {visibleColumns.addressValid && <th className="py-4 px-5 text-center">Address Valid</th>}
+              {visibleColumns.rawPhone && <th className="py-4 px-5 min-w-[120px]">Phone (Raw)</th>}
+              {visibleColumns.formattedPhone && <th className="py-4 px-5 min-w-[150px]">Phone (Formatted)</th>}
+              {visibleColumns.phoneValid && <th className="py-4 px-5 text-center min-w-[120px]">Format Valid</th>}
+              {visibleColumns.firstName && <th className="py-4 px-5 min-w-[120px]">First Name</th>}
+              {visibleColumns.lastName && <th className="py-4 px-5 min-w-[120px]">Last Name</th>}
+              {visibleColumns.streetAddress && <th className="py-4 px-5 min-w-[180px]">Street Address</th>}
+              {visibleColumns.city && <th className="py-4 px-5 min-w-[120px]">City</th>}
+              {visibleColumns.state && <th className="py-4 px-5 min-w-[80px]">State</th>}
+              {visibleColumns.zipCode && <th className="py-4 px-5 min-w-[100px]">ZIP Code</th>}
+              {visibleColumns.addressValid && <th className="py-4 px-5 text-center min-w-[120px]">Address Valid</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#2A3138]/50 text-slate-300 font-medium">

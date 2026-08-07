@@ -81,7 +81,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] text-slate-100 font-sans p-4 md:p-8 selection:bg-[#00ff9d]/30">
+    <div className="min-h-[100dvh] bg-[#0B0F14] text-slate-100 font-sans p-4 md:p-8 selection:bg-[#00ff9d]/30">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
@@ -134,7 +134,7 @@ export default function App() {
                 <select
                   value={selectedState}
                   onChange={(e) => handleStateChange(e.target.value)}
-                  className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl pl-10 pr-10 py-3 text-sm text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all appearance-none shadow-inner"
+                  className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl pl-10 pr-10 py-3 min-h-[44px] text-base text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all appearance-none shadow-inner"
                 >
                   <option value="AL">AL — Alabama</option>
                   <option value="AK">AK — Alaska</option>
@@ -203,7 +203,7 @@ export default function App() {
                 <select
                   value={selectedAreaCode}
                   onChange={(e) => handleAreaCodeChange(e.target.value)}
-                  className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all appearance-none shadow-inner"
+                  className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 min-h-[44px] text-base text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all appearance-none shadow-inner"
                 >
                   <option value="all">All Area Codes (Random)</option>
                   {availableAreaCodes.map((code) => (
@@ -229,7 +229,7 @@ export default function App() {
                 max={5000}
                 value={generationCount}
                 onChange={(e) => setGenerationCount(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all shadow-inner"
+                className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 min-h-[44px] text-base text-white font-mono focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all shadow-inner"
               />
             </div>
 
@@ -247,7 +247,7 @@ export default function App() {
                   value={startingPhone}
                   onChange={(e) => handlePhoneInputChange(e.target.value)}
                   placeholder="e.g. (303) 555-0100"
-                  className={`w-full bg-[#0B0F14] border rounded-xl pl-10 pr-4 py-3 text-sm text-white font-mono focus:outline-none transition-all shadow-inner ${
+                  className={`w-full bg-[#0B0F14] border rounded-xl pl-10 pr-4 py-3 min-h-[44px] text-base text-white font-mono focus:outline-none transition-all shadow-inner ${
                     isValidFormat ? 'border-[#2A3138] focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d]' : 'border-rose-500 focus:border-rose-400 focus:ring-1 focus:ring-rose-400'
                   }`}
                 />
@@ -276,7 +276,7 @@ export default function App() {
                 value={outputFileName}
                 onChange={(e) => setOutputFileName(e.target.value)}
                 placeholder="usa_profiles.xlsx"
-                className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all shadow-inner"
+                className="w-full bg-[#0B0F14] border border-[#2A3138] rounded-xl px-4 py-3 min-h-[44px] text-base text-white focus:outline-none focus:border-[#00ff9d] focus:ring-1 focus:ring-[#00ff9d] transition-all shadow-inner"
               />
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function App() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => toggleColumn(colKey)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
+                    className={`px-3.5 py-2.5 min-h-[44px] rounded-full text-xs font-semibold border transition-all duration-200 flex items-center justify-center ${
                       isActive
                         ? 'bg-[#00ff9d] border-[#00ff9d] text-[#0B0F14] shadow-[0_0_10px_rgba(0,255,157,0.3)]'
                         : 'bg-transparent border-[#2A3138] text-slate-400 hover:border-slate-600 hover:text-slate-300'
@@ -350,7 +350,7 @@ export default function App() {
               whileTap={isValidFormat && !isGenerating ? { scale: 0.98 } : {}}
               onClick={handleGenerate}
               disabled={isGenerating || !isValidFormat}
-              className="bg-[#00ff9d] hover:bg-[#00e68e] disabled:opacity-50 disabled:cursor-not-allowed text-[#0B0F14] font-extrabold px-8 py-3.5 rounded-xl transition-colors shadow-[0_0_20px_rgba(0,255,157,0.2)] hover:shadow-[0_0_25px_rgba(0,255,157,0.3)] flex items-center justify-center gap-2 w-full sm:w-auto"
+              className="min-h-[44px] bg-[#00ff9d] hover:bg-[#00e68e] disabled:opacity-50 disabled:cursor-not-allowed text-[#0B0F14] font-extrabold px-8 py-3.5 rounded-xl transition-colors shadow-[0_0_20px_rgba(0,255,157,0.2)] hover:shadow-[0_0_25px_rgba(0,255,157,0.3)] flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               {isGenerating ? (
                 <>
