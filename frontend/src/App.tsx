@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePhoneStateSync } from './usePhoneStateSync';
 import { generateProfiles, type ProfileRecord } from './profileGenerator';
 import { ResultsSection, type ColumnVisibility } from './ResultsSection';
-import { MapPin, Phone, Settings2, CheckCircle2, Zap, LayoutList, RefreshCcw } from 'lucide-react';
+import { MapPin, Phone, Settings2, CheckCircle2, Zap, LayoutList, RefreshCcw, ChevronDown } from 'lucide-react';
 
 const ALL_COLUMNS: (keyof ColumnVisibility)[] = [
   'rawPhone',
@@ -146,7 +146,7 @@ export default function App() {
                   <option value="IL">IL — Illinois</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  <ChevronDown size={16} className="text-slate-400" />
                 </div>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function App() {
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  <ChevronDown size={16} className="text-slate-400" />
                 </div>
               </div>
             </div>
