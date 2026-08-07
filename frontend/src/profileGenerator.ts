@@ -23,6 +23,7 @@ export interface GeneratorParams {
  */
 export async function generateProfiles({
   selectedState,
+  selectedAreaCode,
   startingPhone = '',
   count = 100
 }: GeneratorParams): Promise<ProfileRecord[]> {
@@ -51,6 +52,7 @@ export async function generateProfiles({
         startPhone: startingPhone,
         count: count,
         stateFilter: selectedState,
+        areaCode: selectedAreaCode,
         columns: requestColumns
       })
     });

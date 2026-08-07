@@ -107,7 +107,7 @@ app.post('/api/validate', async (c) => {
 })
 
 app.post('/api/generate', async (c) => {
-  const { startPhone, count, stateFilter, columns } = await c.req.json()
+  const { startPhone, count, stateFilter, areaCode, columns } = await c.req.json()
   
   let baseInt: bigint | null = null
   const isMode1 = !!startPhone
@@ -141,18 +141,34 @@ app.post('/api/generate', async (c) => {
 
     if (isMode1 && baseInt !== null) {
       const currentPhoneInt = baseInt + BigInt(i)
-      rawPhone = currentPhoneInt.toString().padStart(10, '0')
+      const phoneStr = currentPhoneInt.toString().padStart(10, '0')
+      
       stateAbbr = faker.location.state({ abbreviated: true })
       if (stateFilter && stateFilter.toUpperCase() !== "ALL" && stateFilter !== 'ALL (Random States)') {
         stateAbbr = stateFilter.toUpperCase()
       }
+
+      // If area code is "all", assign a random valid area code for the state
+      if (areaCode === 'all') {
+        const randomArea = getRandomAreaCode(stateAbbr) || "212"
+        rawPhone = `${randomArea}${phoneStr.substring(3)}`
+      } else if (areaCode && areaCode.length === 3) {
+        // If a specific area code is provided, use it
+        rawPhone = `${areaCode}${phoneStr.substring(3)}`
+      } else {
+        // Otherwise, use the area code from the starting phone
+        rawPhone = phoneStr
+      }
     } else {
       // Mode 2 logic
       stateAbbr = stateFilter.toUpperCase()
-      const areaCode = getRandomAreaCode(stateAbbr) || "212"
+      let currentAreaCode = areaCode
+      if (currentAreaCode === 'all' || !currentAreaCode) {
+        currentAreaCode = getRandomAreaCode(stateAbbr) || "212"
+      }
       const nxx = Math.floor(Math.random() * 800) + 200 // 200-999
       const xxxx = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-      rawPhone = `${areaCode}${nxx}${xxxx}`
+      rawPhone = `${currentAreaCode}${nxx}${xxxx}`
     }
 
     const formattedPhone = formatPhone(rawPhone)
